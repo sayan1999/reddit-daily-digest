@@ -1,0 +1,8 @@
+services:
+    app:
+        container_name: reddit-digest
+        build:
+            context: .
+            dockerfile: Dockerfile
+        volumes:
+            - ./data:/app/data
