@@ -6,7 +6,7 @@ import sqlite3, requests
 import datetime
 from litellm import completion
 import re
-
+from argparse import ArgumentParser
 import logging
 from concurrent.futures import ThreadPoolExecutor
 
@@ -67,6 +67,7 @@ def get_summary(content):
     response = completion(
         model="gemini/gemini-2.5-flash-preview-04-17",
         messages=[{"role": "user", "content": get_prompt(type) + "\n\n\n" + content}],
+        fallbacks=["gemini/gemini-2.0-flash"],
         num_retries=10,
     )
     return (
@@ -78,7 +79,7 @@ def get_summary(content):
 
 
 def send_discord_channel(content, type):
-    url = f"https://discord.com/api/webhooks/{os.getenv("webhookid")}/{os.getenv("webhooktoken")}"
+    url = f"https://discord.com/api/webhooks/{os.getenv('webhookid')}/{os.getenv('webhooktoken')}"
 
     data = {
         "content": content[:2000],
@@ -187,10 +188,19 @@ def chunk_markdown(text, max_chunk_size=2000):
     return chunks
 
 
-wrap_links = lambda text: re.sub(r"\b(https?://|www\.)\S+", r"<\g<0>>", text)
+wrap_links = lambda text: re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"[\1](<\2>)", text)
 
 
 if __name__ == "__main__":
+
+    parser = ArgumentParser(description="Reddit Scraper")
+    parser.add_argument(
+        "--cron_job",
+        action="store_true",
+        help="Run the script in cron job mode (one run only)",
+    )
+    args = parser.parse_args()
+    logging.info("Starting Reddit Scraper...")
     load_dotenv()
     conn = init_db()
     subreddits = {
@@ -215,9 +225,7 @@ if __name__ == "__main__":
 
         for type, subreddits_list in subreddits.items():
             if if_exists(conn, str(target_date), type):
-                logging.info(
-                    f"Already scraped {type} for {target_date}, retrying after 1 hour..."
-                )
+                logging.info(f"Already scraped {type} for {target_date}")
                 continue
             content = ""
             for subreddit in subreddits_list:
@@ -241,7 +249,7 @@ if __name__ == "__main__":
                             logging.warning(f"Post out of date {target_date}")
                             return ""
 
-                    with ThreadPoolExecutor() as executor:
+                    with ThreadPoolExecutor(max_workers=10) as executor:
                         results = list(executor.map(process_submission, submissions))
 
                     content += "\n\n".join(filter(None, results))
@@ -254,4 +262,8 @@ if __name__ == "__main__":
                 send_discord_channel(summary_chunk, type)
             insert_post(conn, str(today), str(target_date), type, content, summary)
             time.sleep(10)
+        if args.cron_job:
+            logging.info("Running in cron job mode, exiting after one run.")
+            break
+        logging.info("Sleeping for 1 hour...")
         time.sleep(3600)
