@@ -95,7 +95,7 @@ def send_discord_channel(content, type):
 def reddit_scrape(post_url, max_root_comments=100, max_depth_per_comment=20):
     try:
         if "/comments/" not in post_url:
-            logging.warning("Invalid Reddit post URL.", post_url)
+            logging.warning("Invalid Reddit post URL. %s", post_url)
             return ""
         logging.info(f"Scraping {post_url}...")
         submission = reddit.submission(id=post_url.split("/comments/")[1].split("/")[0])
@@ -190,7 +190,7 @@ def chunk_markdown(text, max_chunk_size=2000):
     return chunks
 
 
-wrap_links = lambda text: re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"[\1](<\2>)", text)
+wrap_links = lambda text: re.sub(r"\(((https?://)[^\s)]+)\)", r"(<\1>)", text)
 
 
 if __name__ == "__main__":
