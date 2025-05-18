@@ -206,10 +206,20 @@ if __name__ == "__main__":
     load_dotenv()
     conn = init_db()
     subreddits = {
-        "stock": ["IndianStockMarket", "mutualfunds"],
-        "llms": ["LocalLLaMA"],
-        "AI Art": ["comfyui", "StableDiffusion"],
-        "AI": ["MachineLearning", "ArtificialInteligence"],
+        "stock": [
+            "IndianStockMarket",
+            "MutualfundsIndia",
+            "IndiaInvestments",
+            "personalfinanceindia",
+        ],
+        "llms": ["LocalLLaMA", "OpenAI", "ChatGPT", "Bard"],
+        "AI Art": ["comfyui", "StableDiffusion", "aivideo", "aiVideoCraft"],
+        "AI": [
+            "MachineLearning",
+            "ArtificialInteligence",
+            "singularity",
+            "learnmachinelearning",
+        ],
     }
 
     reddit = praw.Reddit(
