@@ -105,7 +105,7 @@ def send_discord_channel(content, type_):
     url = os.getenv(f"{type_.lower()}_webhook")
     if url is None:
         logger.error(f"No {type_} webhook found: {type_.lower()}_webhook")
-        return
+        raise Exception(f"No {type_} webhook found: {type_.lower()}_webhook")
     data = {
         "content": content[:2000],
         "username": "Reddit Digest",
