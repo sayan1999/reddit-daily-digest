@@ -113,6 +113,7 @@ def send_discord_channel(content, type_):
 
     result = requests.post(url, json=data)
     result.raise_for_status()
+    logger.info(f"Sent {type_} summary to Discord")
 
 
 def reddit_scrape(post_url, max_root_comments=100, max_depth_per_comment=20):
@@ -293,6 +294,7 @@ if __name__ == "__main__":
             if summary is None:
                 logger.error(f"Failed to get summary for {type_}", exc_info=True)
                 continue
+            logger.info(f"Got summary for {type_}")
             logger.debug(f"Summary for {type_}: {summary}")
             try:
                 send_discord_channel("# " + type_, type_)
