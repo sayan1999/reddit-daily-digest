@@ -4,12 +4,14 @@ from dotenv import load_dotenv
 import os
 import sqlite3, requests
 import datetime
-from litellm import completion
+from litellm import acompletion
 import re
 from argparse import ArgumentParser
 import logging
 from concurrent.futures import ThreadPoolExecutor
 import logging.handlers
+import asyncio
+
 os.makedirs("data", exist_ok=True)
 
 logging.basicConfig(
@@ -69,8 +71,8 @@ def insert_post(conn, timestamp, date, type, summary):
     conn.commit()
 
 
-def get_summary(content):
-    response = completion(
+async def get_summary(content):
+    response = await acompletion(
         model="gemini/gemini-2.5-flash-preview-04-17",
         messages=[{"role": "user", "content": get_prompt(type) + "\n\n\n" + content}],
         fallbacks=["gemini/gemini-2.0-flash"],
@@ -269,7 +271,10 @@ if __name__ == "__main__":
                         results = list(executor.map(process_submission, submissions))
 
                     content += "\n\n".join(filter(None, results))
-            summary = get_summary(content)
+            summary = asyncio.run(get_summary(content))
+            if summary is None:
+                logging.error(f"Failed to get summary for {type}", exc_info=True)
+                continue
             logging.debug(f"Summary for {type}: {summary}")
             send_discord_channel("# " + type, type)
             for summary_chunk in chunk_markdown(summary):
