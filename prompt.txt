@@ -83,3 +83,11 @@ Create a structured summary that:
 
 
 Your primary value is finding signal in the noise.
+
+## Do's and Dont's
+
+1. Try to combine similar post that are talking about the same element together
+2. Do not write sparse points just for the sake of generation if there is no updates to talk about.
+3. Try to crunch everything down to 5-7 points max. In extreme cases where there are too many updates yu can max go for 10 points, but inly in extreme cases.
+4. Avoid recalling every update, just try to include elidible updates
+5. Avoid generic posts which are generic recommendation or generic statements and people just talking about it.

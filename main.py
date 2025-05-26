@@ -81,8 +81,7 @@ def get_summary(content):
 
 
 def send_discord_channel(content, type):
-    url = f"https://discord.com/api/webhooks/{os.getenv('webhookid')}/{os.getenv('webhooktoken')}"
-
+    url = os.getenv(f"{type.lower()}_webhook")
     data = {
         "content": content[:2000],
         "username": "Reddit Digest",
@@ -206,14 +205,15 @@ if __name__ == "__main__":
     load_dotenv()
     conn = init_db()
     subreddits = {
-        "stock": [
+        "Stock": [
             "IndianStockMarket",
             "MutualfundsIndia",
             "IndiaInvestments",
             "personalfinanceindia",
+            "IndianStreetBets",
         ],
-        "llms": ["LocalLLaMA", "OpenAI", "ChatGPT", "Bard"],
-        "AI Art": ["comfyui", "StableDiffusion", "aivideo", "aiVideoCraft"],
+        "LLM": ["LocalLLaMA", "OpenAI", "ChatGPT", "Bard"],
+        "AI_Art": ["comfyui", "StableDiffusion", "aivideo", "aiVideoCraft"],
         "AI": [
             "MachineLearning",
             "ArtificialInteligence",
@@ -242,7 +242,7 @@ if __name__ == "__main__":
             content = ""
             for subreddit in subreddits_list:
                 logging.info(f"Scraping {type} from r/{subreddit}...")
-                for category in ["hot", "new", "top"]:
+                for category in ["hot"]:
                     submissions = (
                         getattr(reddit.subreddit(subreddit), category)(limit=1000)
                         if category != "top"
