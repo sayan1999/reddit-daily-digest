@@ -9,13 +9,18 @@ import re
 from argparse import ArgumentParser
 import logging
 from concurrent.futures import ThreadPoolExecutor
-
+import logging.handlers
 os.makedirs("data", exist_ok=True)
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.FileHandler("data/reddit_scraper.log"), logging.StreamHandler()],
+    handlers=[
+        logging.handlers.RotatingFileHandler(
+            "data/reddit_scraper.log", maxBytes=10 * 1024 * 1024, backupCount=1
+        ),
+        logging.StreamHandler(),
+    ],
 )
 
 
@@ -32,7 +37,6 @@ def init_db():
             timestamp TEXT,
             date TEXT,
             type TEXT,
-            content TEXT,
             summary TEXT,
             PRIMARY KEY (date, type)
         )
@@ -53,14 +57,14 @@ def if_exists(conn, date, type):
     return cursor.fetchone()[0] > 0
 
 
-def insert_post(conn, timestamp, date, type, content, summary):
+def insert_post(conn, timestamp, date, type, summary):
     cursor = conn.cursor()
     cursor.execute(
         """
-        INSERT OR REPLACE INTO posts (timestamp, date, type, content, summary)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT OR REPLACE INTO posts (timestamp, date, type, summary)
+        VALUES (?, ?, ?, ?)
         """,
-        (timestamp, date, type, content, summary),
+        (timestamp, date, type, summary),
     )
     conn.commit()
 
@@ -272,7 +276,7 @@ if __name__ == "__main__":
                 summary_chunk = wrap_links(summary_chunk)
                 logging.debug(f"Sending chunk to Discord: {type=} {summary_chunk}")
                 send_discord_channel(summary_chunk, type)
-            insert_post(conn, str(today), str(target_date), type, content, summary)
+            insert_post(conn, str(today), str(target_date), type, summary)
             time.sleep(10)
         if args.cron_job:
             logging.info("Running in cron job mode, exiting after one run.")
