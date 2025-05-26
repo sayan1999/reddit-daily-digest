@@ -74,7 +74,7 @@ def insert_post(conn, timestamp, date, type, summary):
 async def get_summary(content):
     response = await acompletion(
         model="gemini/gemini-2.5-flash-preview-04-17",
-        messages=[{"role": "user", "content": get_prompt(type) + "\n\n\n" + content}],
+        messages=[{"role": "user", "content": get_prompt(type_) + "\n\n\n" + content}],
         fallbacks=["gemini/gemini-2.0-flash"],
         num_retries=10,
     )
@@ -86,8 +86,11 @@ async def get_summary(content):
     )
 
 
-def send_discord_channel(content, type):
-    url = os.getenv(f"{type.lower()}_webhook")
+def send_discord_channel(content, type_):
+    url = os.getenv(f"{type_.lower()}_webhook")
+    if url is None:
+        logging.error(f"No {type_} webhook found: {type_.lower()}_webhook")
+        return
     data = {
         "content": content[:2000],
         "username": "Reddit Digest",
@@ -241,13 +244,13 @@ if __name__ == "__main__":
 
         target_date = (today - datetime.timedelta(days=1)).date()
 
-        for type, subreddits_list in subreddits.items():
-            if if_exists(conn, str(target_date), type):
-                logging.info(f"Already scraped {type} for {target_date}")
+        for type_, subreddits_list in subreddits.items():
+            if if_exists(conn, str(target_date), type_):
+                logging.info(f"Already scraped {type_} for {target_date}")
                 continue
             content = ""
             for subreddit in subreddits_list:
-                logging.info(f"Scraping {type} from r/{subreddit}...")
+                logging.info(f"Scraping {type_} from r/{subreddit}...")
                 for category in ["hot"]:
                     submissions = (
                         getattr(reddit.subreddit(subreddit), category)(limit=1000)
@@ -273,15 +276,15 @@ if __name__ == "__main__":
                     content += "\n\n".join(filter(None, results))
             summary = asyncio.run(get_summary(content))
             if summary is None:
-                logging.error(f"Failed to get summary for {type}", exc_info=True)
+                logging.error(f"Failed to get summary for {type_}", exc_info=True)
                 continue
-            logging.debug(f"Summary for {type}: {summary}")
-            send_discord_channel("# " + type, type)
+            logging.debug(f"Summary for {type_}: {summary}")
+            send_discord_channel("# " + type_, type_)
             for summary_chunk in chunk_markdown(summary):
                 summary_chunk = wrap_links(summary_chunk)
-                logging.debug(f"Sending chunk to Discord: {type=} {summary_chunk}")
-                send_discord_channel(summary_chunk, type)
-            insert_post(conn, str(today), str(target_date), type, summary)
+                logging.debug(f"Sending chunk to Discord: {type_=} {summary_chunk}")
+                send_discord_channel(summary_chunk, type_)
+            insert_post(conn, str(today), str(target_date), type_, summary)
             time.sleep(10)
         if args.cron_job:
             logging.info("Running in cron job mode, exiting after one run.")
