@@ -267,7 +267,7 @@ if __name__ == "__main__":
                             logging.warning(f"Post out of date {target_date}")
                             return ""
 
-                    with ThreadPoolExecutor(max_workers=10) as executor:
+                    with ThreadPoolExecutor(max_workers=2) as executor:
                         results = list(executor.map(process_submission, submissions))
 
                     content += "\n\n".join(filter(None, results))
