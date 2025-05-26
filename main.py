@@ -14,15 +14,25 @@ import asyncio
 
 os.makedirs("data", exist_ok=True)
 
-logging.basicConfig(
-    format="%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s - %(message)s",
-    handlers=[
-        logging.handlers.RotatingFileHandler(
-            "data/reddit_scraper.log", maxBytes=10 * 1024 * 1024, level=logging.DEBUG
-        ),
-        logging.StreamHandler(level=logging.INFO),
-    ],
+logger = logging.getLogger(__name__)
+formatter = logging.Formatter(
+    "%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s - %(message)s"
 )
+logger.setLevel(logging.INFO)
+
+stream_handler = logging.StreamHandler()
+stream_handler.setLevel(logging.INFO)
+stream_handler.setFormatter(formatter)
+
+
+file_handler = logging.handlers.RotatingFileHandler(
+    "data/reddit_scraper.log", maxBytes=10 * 1024 * 1024, backupCount=0
+)
+file_handler.setFormatter(formatter)
+file_handler.setLevel(logging.DEBUG)
+
+logger.addHandler(file_handler)
+logger.addHandler(stream_handler)
 
 
 def get_prompt(type):
@@ -80,7 +90,7 @@ async def get_summary(content):
         drop_params=True,
     )
     if response["choices"][0]["message"].get("reasoning_content"):
-        logging.debug(
+        logger.debug(
             f"Reasoning content: {response['choices'][0]['message']['reasoning_content']}"
         )
     return (
@@ -94,7 +104,7 @@ async def get_summary(content):
 def send_discord_channel(content, type_):
     url = os.getenv(f"{type_.lower()}_webhook")
     if url is None:
-        logging.error(f"No {type_} webhook found: {type_.lower()}_webhook")
+        logger.error(f"No {type_} webhook found: {type_.lower()}_webhook")
         return
     data = {
         "content": content[:2000],
@@ -108,14 +118,14 @@ def send_discord_channel(content, type_):
 def reddit_scrape(post_url, max_root_comments=100, max_depth_per_comment=20):
     try:
         if "/comments/" not in post_url:
-            logging.debug("Invalid Reddit post URL. %s", post_url)
+            logger.debug("Invalid Reddit post URL. %s", post_url)
             return ""
-        logging.info(f"Scraping {post_url}...")
+        logger.info(f"Scraping {post_url}...")
         submission = reddit.submission(id=post_url.split("/comments/")[1].split("/")[0])
         submission.comments.replace_more(limit=max_depth_per_comment)
         root_comments = list(submission.comments)[:max_root_comments]
     except:
-        logging.error("Failed to scrape Reddit post %s", post_url, exc_info=True)
+        logger.error("Failed to scrape Reddit post %s", post_url, exc_info=True)
         return ""
 
     def process_comments(comments, level=0):
@@ -215,7 +225,7 @@ if __name__ == "__main__":
         help="Run the script in cron job mode (one run only)",
     )
     args = parser.parse_args()
-    logging.info("Starting Reddit Scraper...")
+    logger.info("Starting Reddit Scraper...")
     load_dotenv()
     conn = init_db()
     subreddits = {
@@ -251,11 +261,11 @@ if __name__ == "__main__":
 
         for type_, subreddits_list in subreddits.items():
             if if_exists(conn, str(target_date), type_):
-                logging.info(f"Already scraped {type_} for {target_date}")
+                logger.info(f"Already scraped {type_} for {target_date}")
                 continue
             content = ""
             for subreddit in subreddits_list:
-                logging.info(f"Scraping {type_} from r/{subreddit}...")
+                logger.info(f"Scraping {type_} from r/{subreddit}...")
                 for category in ["hot"]:
                     submissions = (
                         getattr(reddit.subreddit(subreddit), category)(limit=1000)
@@ -267,12 +277,12 @@ if __name__ == "__main__":
 
                     def process_submission(submission):
                         if filter_by_date(submission, target_date):
-                            logging.info(
+                            logger.info(
                                 f"Found post on {target_date}: {submission.title} {submission.url}"
                             )
                             return reddit_scrape(submission.url)
                         else:
-                            logging.debug(f"Post out of date {target_date}")
+                            logger.debug(f"Post out of date {target_date}")
                             return ""
 
                     with ThreadPoolExecutor(max_workers=2) as executor:
@@ -281,18 +291,18 @@ if __name__ == "__main__":
                     content += "\n\n".join(filter(None, results))
             summary = asyncio.run(get_summary(content))
             if summary is None:
-                logging.error(f"Failed to get summary for {type_}", exc_info=True)
+                logger.error(f"Failed to get summary for {type_}", exc_info=True)
                 continue
-            logging.debug(f"Summary for {type_}: {summary}")
+            logger.debug(f"Summary for {type_}: {summary}")
             send_discord_channel("# " + type_, type_)
             for summary_chunk in chunk_markdown(summary):
                 summary_chunk = wrap_links(summary_chunk)
-                logging.debug(f"Sending chunk to Discord: {type_=} {summary_chunk}")
+                logger.debug(f"Sending chunk to Discord: {type_=} {summary_chunk}")
                 send_discord_channel(summary_chunk, type_)
             insert_post(conn, str(today), str(target_date), type_, summary)
             time.sleep(10)
         if args.cron_job:
-            logging.info("Running in cron job mode, exiting after one run.")
+            logger.info("Running in cron job mode, exiting after one run.")
             break
-        logging.info("Sleeping for 1 hour...")
+        logger.info("Sleeping for 1 hour...")
         time.sleep(3600)
