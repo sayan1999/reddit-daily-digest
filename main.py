@@ -294,11 +294,15 @@ if __name__ == "__main__":
                 logger.error(f"Failed to get summary for {type_}", exc_info=True)
                 continue
             logger.debug(f"Summary for {type_}: {summary}")
-            send_discord_channel("# " + type_, type_)
-            for summary_chunk in chunk_markdown(summary):
-                summary_chunk = wrap_links(summary_chunk)
-                logger.debug(f"Sending chunk to Discord: {type_=} {summary_chunk}")
-                send_discord_channel(summary_chunk, type_)
+            try:
+                send_discord_channel("# " + type_, type_)
+                for summary_chunk in chunk_markdown(summary):
+                    summary_chunk = wrap_links(summary_chunk)
+                    logger.debug(f"Sending chunk to Discord: {type_=} {summary_chunk}")
+                    send_discord_channel(summary_chunk, type_)
+            except Exception as e:
+                logger.error(f"Failed to send summary to Discord: {e}", exc_info=True)
+                continue
             insert_post(conn, str(today), str(target_date), type_, summary)
             time.sleep(10)
         if args.cron_job:
