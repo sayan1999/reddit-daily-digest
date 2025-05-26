@@ -15,13 +15,12 @@ import asyncio
 os.makedirs("data", exist_ok=True)
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
+    format="%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s - %(message)s",
     handlers=[
         logging.handlers.RotatingFileHandler(
-            "data/reddit_scraper.log", maxBytes=10 * 1024 * 1024, backupCount=1
+            "data/reddit_scraper.log", maxBytes=10 * 1024 * 1024, level=logging.DEBUG
         ),
-        logging.StreamHandler(),
+        logging.StreamHandler(level=logging.INFO),
     ],
 )
 
@@ -77,7 +76,13 @@ async def get_summary(content):
         messages=[{"role": "user", "content": get_prompt(type_) + "\n\n\n" + content}],
         fallbacks=["gemini/gemini-2.0-flash"],
         num_retries=10,
+        thinking={"type": "enabled", "budget_tokens": 1024},
+        drop_params=True,
     )
+    if response["choices"][0]["message"].get("reasoning_content"):
+        logging.debug(
+            f"Reasoning content: {response['choices'][0]['message']['reasoning_content']}"
+        )
     return (
         response["choices"][0]["message"]["content"]
         .strip("```markdown")
@@ -103,7 +108,7 @@ def send_discord_channel(content, type_):
 def reddit_scrape(post_url, max_root_comments=100, max_depth_per_comment=20):
     try:
         if "/comments/" not in post_url:
-            logging.warning("Invalid Reddit post URL. %s", post_url)
+            logging.debug("Invalid Reddit post URL. %s", post_url)
             return ""
         logging.info(f"Scraping {post_url}...")
         submission = reddit.submission(id=post_url.split("/comments/")[1].split("/")[0])
@@ -267,7 +272,7 @@ if __name__ == "__main__":
                             )
                             return reddit_scrape(submission.url)
                         else:
-                            logging.warning(f"Post out of date {target_date}")
+                            logging.debug(f"Post out of date {target_date}")
                             return ""
 
                     with ThreadPoolExecutor(max_workers=2) as executor:
