@@ -82,11 +82,11 @@ def insert_post(conn, timestamp, date, type, summary):
 
 async def get_summary(content):
     response = await acompletion(
-        model="gemini/gemini-2.5-flash-preview-04-17",
+        model="gemini/gemini-2.5-flash",
         messages=[{"role": "user", "content": get_prompt(type_) + "\n\n\n" + content}],
         fallbacks=["gemini/gemini-2.0-flash"],
         num_retries=10,
-        thinking={"type": "enabled", "budget_tokens": 1024},
+        thinking={"type": "enabled", "budget_tokens": 2048},
         drop_params=True,
     )
     if response["choices"][0]["message"].get("reasoning_content"):
