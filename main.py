@@ -82,9 +82,9 @@ def insert_post(conn, timestamp, date, type, summary):
 
 async def get_summary(content):
     response = await acompletion(
-        model="gemini/gemini-2.5-flash",
+        model="gemini/gemini-2.5-pro",
         messages=[{"role": "user", "content": get_prompt(type_) + "\n\n\n" + content}],
-        fallbacks=["gemini/gemini-2.0-flash"],
+        fallbacks=["gemini/gemini-2.5-flash"],
         num_retries=10,
         thinking={"type": "enabled", "budget_tokens": 2048},
         drop_params=True,
